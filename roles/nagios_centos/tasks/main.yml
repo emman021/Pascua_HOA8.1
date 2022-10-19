@@ -1,0 +1,91 @@
+- name: Installing nagios dependecies and libraries
+  tags: dependecies, libraries
+  yum:
+    name:
+      - gcc
+      - glibc
+      - glibc-common
+      - perl
+      - httpd
+      - php
+      - wget
+      - gd
+      - gd-devel
+      - openssl-devel
+      - gcc
+      - glibc
+      - glibc-common
+      - make
+      - gettext
+      - automake
+      - autoconf
+      - wget
+      - openssl-devel
+      - net-snmp
+      - net-snmp-utils
+      - python2-pip
+    state: latest
+
+- name: Install passlib python package
+  pip:
+    name: passlib
+
+- name: Creating a directory (where the downloaded files will be stored)
+  file:
+    path: ~/nagios
+    state: directory
+
+- name: Downloading and extracting Nagios
+  unarchive:
+    src: https://github.com/NagiosEnterprises/nagioscore/archive/nagios-4.4.6.tar.gz
+    dest: ~/nagios
+    remote_src: yes
+    mode: 0777
+    owner: root
+    group: root
+
+- name: Compiling, installing, and adding users and groups in nagios
+  shell: |
+    cd ~/nagios/nagioscore-**
+    ./configure
+    make all
+    make install-groups-users
+    usermod -a -G nagios apache
+    make install
+    make install-daemoninit
+    make install-commandmode
+    make install-config
+    make install-webconf
+- name: Downloading and extracting Nagios plugins
+  unarchive:
+    src: https://github.com/nagios-plugins/nagios-plugins/archive/release-2.3.3.tar.gz
+    dest: ~/nagios
+    remote_src: yes
+    mode: 0777
+    owner: root
+    group: root
+
+- name: Compiling and installing plugins
+  shell: |
+    cd ~/nagios/nagios-plugins*
+    ./tools/setup
+    ./configure
+    make
+    make install
+- name: Add a user to a password file and ensure permissions are set
+  community.general.htpasswd:
+    path: /usr/local/nagios/etc/htpasswd.users
+    name: adminnagios
+    password: server12345
+
+- name: Making sure that nagios is started and enabled
+  service:
+    name: nagios
+    state: restarted
+    enabled: true
+
+- name: Making sure that httpd is started and enabled
+  service:
+    name: httpd
+    state: restarted
+    enabled: true
